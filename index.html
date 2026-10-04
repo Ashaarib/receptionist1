@@ -1,0 +1,2487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nawab – Receptionist Console</title>
+  <link rel="icon" type="image/png" href="./Logo.png?v=1">
+
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* Global Black & Red Theme Overrides */
+    body, html, .receptionist-layout, main.main-content, .card, .modal-box {
+      background-color: #000000 !important;
+      color: #ffffff !important;
+    }
+    :root {
+      --primary: #e60000 !important;
+      --red: #e60000 !important;
+      --red-deep: #990000 !important;
+      --gold: #e60000 !important; /* Unified highlight color to match Red theme */
+      --success: #e60000 !important;
+      --info: #e60000 !important;
+    }
+    
+    /* Universal Button Override: Red background, White text */
+    button, .btn, .btn-primary, .btn-ghost, .btn-success, .btn-danger, .confirm-btn, .take-order-btn {
+      background-color: #e60000 !important;
+      color: #ffffff !important;
+      border: 1px solid #e60000 !important;
+      border-radius: 4px;
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+    }
+    button:hover, .btn:hover {
+      background-color: #b30000 !important;
+      border-color: #b30000 !important;
+    }
+    
+    .running-row td { font-size:.83rem; }
+    .check-cell { white-space:nowrap; }
+    .order-id-hover { cursor:pointer; color:var(--red); font-weight:700; text-decoration:underline dotted; }
+    .timer-cell { font-variant-numeric:tabular-nums; }
+    .tab-badge { background:var(--red);color:#fff;border-radius:99px;padding:.1rem .4rem;font-size:.7rem;font-weight:700;margin-left:.3rem; }
+    
+    .notif-bar {
+      background:rgba(230,0,0,.15);border:1px solid var(--red-deep);border-radius:var(--radius);
+      padding:.6rem 1rem;display:flex;align-items:center;gap:.8rem;margin-bottom:1rem;font-size:.88rem;
+      animation:slideIn .3s ease;
+    }
+    .bill-print-area { display:none; }
+    
+    /* Logo Container and Responsive Image Adjustment */
+    .brand-logo-container {
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      border-radius: var(--radius, 8px);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .brand-image {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    /* Standardized non-scroll modal geometry layout rules */
+    .modal-overlay {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.85);
+      z-index: 1100;
+    }
+    .modal-box {
+      display: flex;
+      flex-direction: column;
+      max-height: 85vh;
+      width: 100%;
+      max-width: 500px;
+      background: #000000;
+      border: 1px solid #e60000;
+      border-radius: var(--radius, 8px);
+      position: relative;
+    }
+    .modal-box.modal-lg {
+      max-width: 850px;
+    }
+    .modal-header-sticky {
+      padding: 1.5rem 1.5rem 1rem 1rem;
+      flex-shrink: 0;
+    }
+    .modal-body-scroll {
+      padding: 0 1.5rem 1.5rem 1.5rem;
+      overflow-y: auto;
+      flex-grow: 1;
+    }
+    
+    /* Make input text fields legible in black theme */
+    .form-control, input, select, textarea {
+      background-color: #1a1a1a !important;
+      color: #ffffff !important;
+      border: 1px solid #333 !important;
+    }
+    .data-table th {
+      background-color: #1a1a1a !important;
+      color: #ffffff !important;
+    }
+    .data-table td {
+      border-bottom: 1px solid #222 !important;
+    }
+    .bill-container {
+      background-color: #ffffff !important;
+      color: #000000 !important;
+    }
+  </style>
+</head>
+<body>
+
+<div class="receptionist-layout">
+  <aside class="sidebar-nav" style="background-color: #111; border-right: 1px solid #222;">
+    <div class="sidebar-brand">
+      <div class="brand-logo-container">
+        <img src="Logo.png" alt="Nawab Logo" class="brand-image">
+      </div>
+      <div>
+        <div class="brand-name" style="font-size:1rem; color: #fff;">Nawab</div>
+        <div class="brand-tagline" style="color: var(--red);">Receptionist</div>
+      </div>
+    </div>
+
+    <div class="sidebar-nav-item active" onclick="showPage('running')" id="nav-running">
+      🔥 Running Orders <span class="sidebar-badge" id="runningBadge">0</span>
+    </div>
+    <div class="sidebar-nav-item" onclick="showPage('reservations')" id="nav-reservations">
+      🪑 Reservations <span class="sidebar-badge" id="rsvBadge">0</span>
+    </div>
+    <div class="sidebar-nav-item" onclick="showPage('dinein')" id="nav-dinein">
+      🍽️ Dine In <span class="sidebar-badge" id="dineBadge">0</span>
+    </div>
+    <div class="sidebar-nav-item" onclick="showPage('takeaway')" id="nav-takeaway">
+      🥡 Take Away <span class="sidebar-badge" id="taBadge">0</span>
+    </div>
+    <div class="sidebar-nav-item" onclick="showPage('delivery')" id="nav-delivery">
+      🚚 Delivery <span class="sidebar-badge" id="delBadge">0</span>
+    </div>
+    <div class="sidebar-nav-item" onclick="showPage('settled')" id="nav-settled">
+      ✅ Settled Orders
+    </div>
+    <div class="sidebar-nav-item" onclick="showPage('inventory')" id="nav-inventory">
+  📦 Inventory
+</div>
+    <div style="padding:1rem 1.5rem; border-top:1px solid #222; margin-top:auto;">
+      <a href="index.html" class="btn" style="width:100%; margin-bottom:.5rem; display:block; text-align:center; text-decoration:none;">Customer Page</a>
+      <a href="admin.html?from=receptionist" class="btn" style="width:100%; display:block; text-align:center; text-decoration:none;">Admin Page</a>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <div class="toast-container" id="toastContainer"></div>
+    <div id="notificationArea"></div>
+
+    <div id="page-running">
+      <div class="page-title" style="color: var(--red);">🔥 Running Orders</div>
+
+      <!-- Replace the existing action buttons div under page-running -->
+<div style="display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap;">
+  <button class="btn" onclick="openWalkinModal()">
+    + New Walk-In Order
+  </button>
+  <button class="btn" onclick="openTableMgmtModal()">
+    ⚙️ Manage Tables
+  </button>
+  <button class="btn" onclick="openReceptionExpenseModal()">
+    + Add Expenses
+  </button>
+</div>
+
+      <div class="card" style="overflow-x:auto;">
+        <table class="data-table" id="runningTable">
+          <thead>
+            <tr>
+              <th>Order ID</th>
+              <th>Type</th>
+              <th>Table</th>
+              <th>Customer</th>
+              <th>Order Accepted</th>
+              <th>Order Prepared</th>
+              <th>Served / Dispatched</th>
+              <th>Delivered</th>
+              <th>Order Completed</th>
+              <th>Timer</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="runningBody">
+            <tr><td colspan="11" class="text-grey text-center" style="padding:2rem;">No running orders</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="page-reservations" class="hidden">
+      <div class="page-title" style="color: var(--red);">🪑 Reservations</div>
+      <div class="card" style="overflow-x:auto;">
+        <table class="data-table" id="rsvTable">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Reservation ID</th>
+              <th>Customer Name</th>
+              <th>Cell No</th>
+              <th>Table</th>
+              <th>Date</th>
+              <th>Time</th>
+              <th>Party</th>
+              <th>Reserved On</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="rsvBody">
+            <tr><td colspan="11" class="text-grey text-center" style="padding:2rem;">No upcoming reservations</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="page-dinein" class="hidden">
+      <div class="page-title" style="color: var(--red);">🍽️ Dine In Orders</div>
+      <div class="card" style="overflow-x:auto;">
+        <table class="data-table" id="dineTable">
+          <thead><tr>
+            <th>S.No</th><th>Order ID</th><th>Table No</th>
+            <th>Time in Service</th><th>Status</th>
+          </tr></thead>
+          <tbody id="dineBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="page-takeaway" class="hidden">
+      <div class="page-title" style="color: var(--red);">🥡 Take Away Orders</div>
+      <div class="card" style="overflow-x:auto;">
+        <table class="data-table" id="taTable">
+          <thead><tr>
+            <th>S.No</th><th>Order ID</th><th>Time in Service</th><th>Status</th>
+          </tr></thead>
+          <tbody id="taBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="page-delivery" class="hidden">
+      <div class="page-title" style="color: var(--red);">🚚 Delivery Orders</div>
+      <div class="card" style="overflow-x:auto;">
+        <table class="data-table" id="delTable">
+          <thead><tr>
+            <th>S.No</th><th>Order ID</th><th>Address</th>
+            <th>Time in Delivery</th><th>Status</th>
+          </tr></thead>
+          <tbody id="delBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="page-settled" class="hidden">
+      <div class="page-title" style="color: var(--red);">✅ Settled Orders</div>
+
+      <div style="display:flex;gap:.7rem;align-items:center;margin-bottom:1rem;flex-wrap:wrap;">
+        <label class="text-grey" style="font-size:.85rem;">Filter:</label>
+        <select class="form-control" id="settledFilter" style="width:auto;" onchange="filterSettled()">
+          <option value="today">Today</option>
+          <option value="week">This Week</option>
+          <option value="month">This Month</option>
+          <option value="all">All Time</option>
+        </select>
+      </div>
+
+      <div class="card" style="overflow-x:auto;">
+        <table class="data-table" id="settledTable">
+          <thead><tr>
+            <th>S.No</th><th>Order ID</th><th>Customer Name</th>
+            <th>Cell No</th><th>Type</th><th>Completed At</th>
+            <th>Order Amount</th><th>Running Total</th>
+          </tr></thead>
+          <tbody id="settledBody"></tbody>
+          <tfoot>
+            <tr>
+              <td colspan="6" style="text-align:right;font-weight:700;color:var(--red);padding:.7rem .8rem;">Daily Grand Total:</td>
+              <td colspan="2" style="font-weight:700;color:var(--red);padding:.7rem .8rem;" id="settledGrandTotal">Rs. 0</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+    <!-- =========================================================
+     INVENTORY PAGE
+========================================================= -->
+<div id="page-inventory" class="hidden">
+
+  <div class="page-title" style="color:var(--red);">
+    📦 Inventory Management
+  </div>
+
+  <div style="display:flex;gap:.7rem;flex-wrap:wrap;margin-bottom:1.2rem;">
+
+    <button class="btn" onclick="openAddInventoryModal()">
+      ➕ Add Inventory
+    </button>
+
+    <button class="btn" onclick="loadReceptionInventory()">
+      📋 View Inventory
+    </button>
+
+    <button class="btn" onclick="openEditInventoryModal()">
+      ✏️ Edit Inventory
+    </button>
+
+    <button class="btn" onclick="deleteSelectedInventory()">
+      🗑️ Delete Inventory
+    </button>
+
+  </div>
+
+  <div class="card" style="overflow-x:auto;">
+
+    <table class="data-table">
+
+      <thead>
+        <tr>
+          <th>Select</th>
+          <th>S.No</th>
+          <th>Item Name</th>
+          <th>Quantity</th>
+          <th>Unit Price</th>
+          <th>Total Price</th>
+          <th>Purchased From</th>
+          <th>Invoice No.</th>
+          <th>Status</th>
+          <th>Last Updated</th>
+        </tr>
+      </thead>
+
+      <tbody id="receptionInventoryBody">
+        <tr>
+          <td colspan="10"
+              class="text-grey text-center"
+              style="padding:2rem;">
+            Click "View Inventory" to load inventory
+          </td>
+        </tr>
+      </tbody>
+
+    </table>
+
+  </div>
+
+</div>
+  </main>
+</div>
+
+<div class="order-detail-panel" id="detailPanel" style="background-color: #111; border-left: 1px solid var(--red);">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+    <h4 style="font-family:var(--font-display);color:var(--red);">Order Details</h4>
+    <button onclick="closeDetailPanel()" style="background:none;border:none;color:var(--grey);cursor:pointer;font-size:1.2rem;">✕</button>
+  </div>
+  <div id="detailContent"></div>
+</div>
+
+<div class="modal-overlay hidden" id="tableMgmtModal">
+  <div class="modal-box">
+    <div class="modal-header-sticky">
+      <button class="modal-close" onclick="closeModal('tableMgmtModal')">✕</button>
+      <div class="modal-title" style="color: var(--red);">Table Setup & Management</div>
+    </div>
+    
+    <div class="modal-body-scroll">
+      <div class="form-group">
+        <label>Modify Existing Active Table</label>
+        <select class="form-control" id="mgmtTableNo" onchange="if(this.value){document.getElementById('mgmtNewTableNo').value='';}">
+          <option value="">-- Choose Existing Table --</option>
+        </select>
+      </div>
+      
+      <div style="text-align:center; margin:.5rem 0; font-weight:bold; color:var(--red); font-size:0.85rem;">OR CREATE NEW</div>
+
+      <div class="form-group">
+        <label>Add Brand New Table Number</label>
+        <input type="number" class="form-control" id="mgmtNewTableNo" min="1" placeholder="e.g. 15" oninput="if(this.value){document.getElementById('mgmtTableNo').value='';}">
+      </div>
+
+      <div class="form-group">
+        <label>Seat Capacity</label>
+        <input type="number" id="mgmtTableCap" class="form-control" min="1" placeholder="e.g. 4">
+      </div>
+      <div class="form-group">
+        <label>Layout Status Profile</label>
+        <select class="form-control" id="mgmtTableStatus">
+          <option value="available">Available</option>
+          <option value="reserved">Reserved</option>
+          <option value="occupied">Occupied</option>
+        </select>
+      </div>
+      
+      <div style="display:flex; gap:0.5rem; margin-top:1.5rem;">
+        <button class="btn" style="width:100%;" onclick="submitTableModification()">Save Changes</button>
+      </div>
+
+      <hr style="border: 0; border-top: 1px solid #333; margin: 1.5rem 0;">
+      <div style="background: rgba(230, 0, 0, 0.05); border: 1px solid rgba(230, 0, 0, 0.2); padding: 1rem; border-radius: var(--radius);">
+        <div style="color: var(--red); font-weight: 700; font-size: 0.9rem; margin-bottom: 0.5rem;">⚠️ Danger Zone: Delete Table</div>
+        <div class="form-group" style="margin-bottom: 0.8rem;">
+          <label style="color: var(--grey);">Select Table to Remove</label>
+          <select class="form-control" id="deleteTableNo" style="border-color: rgba(230,0,0,0.3);">
+            <option value="">-- Choose Table to Delete --</option>
+          </select>
+        </div>
+        <button class="btn" style="width:100%;" onclick="submitTableDeletion()">
+          🗑️ Delete Table From Floor
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="timerModal">
+  <div class="modal-box">
+    <div class="modal-header-sticky">
+      <button class="modal-close" onclick="closeModal('timerModal')">✕</button>
+      <div class="modal-title" style="color: var(--red);">Set Order Timer</div>
+    </div>
+    <div class="modal-body-scroll">
+      <p class="text-grey" style="margin-bottom:1rem;font-size:.9rem;">
+        Enter the estimated time (in minutes) for order service or delivery.
+      </p>
+      <div class="form-group">
+        <label>Estimated Time (minutes)</label>
+        <input type="number" class="form-control" id="timerMinutes" min="1" max="240" placeholder="e.g. 30">
+      </div>
+      <input type="hidden" id="timerOrderId">
+      <button class="btn" style="width:100%;" onclick="confirmTimer()">Start Timer</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="walkinModal">
+  <div class="modal-box modal-lg">
+    <div class="modal-header-sticky">
+      <button class="modal-close" onclick="closeModal('walkinModal')">✕</button>
+      <div class="modal-title" style="color: var(--red);">New Walk-In Dine-In Order</div>
+    </div>
+
+    <div class="modal-body-scroll">
+      <div id="walkinStep1">
+        <p class="text-grey" style="margin-bottom:1rem;font-size:.9rem;">Select a table from the floor plan:</p>
+        <div class="table-selection-legend" style="font-size:.8rem;">
+          <span><span style="display:inline-block;width:12px;height:12px;background:#990000;border-radius:3px;margin-right:.3rem;"></span>Tables</span>
+        </div>
+        <div class="floor-plan" id="walkinFloorPlan" style="height:380px;"></div>
+      </div>
+
+      <div id="walkinStep2" class="hidden">
+        <div style="display:flex;align-items:center;gap:.8rem;margin-bottom:1rem;">
+          <button class="btn" onclick="showStep1()">← Back</button>
+          <span class="text-red" style="font-weight:700;" id="walkinTableLabel">Table: —</span>
+        </div>
+
+        <div class="input-row">
+          <div class="form-group">
+            <label>Customer Name</label>
+            <input type="text" class="form-control" id="wk_name" placeholder="Walk-in guest">
+          </div>
+          <div class="form-group">
+            <label>Cell Number</label>
+            <input type="tel" class="form-control" id="wk_phone">
+          </div>
+        </div>
+
+        <div class="card-header" style="margin-top:1rem; color: var(--red);">Select Items</div>
+        <div id="walkinMenuItems" style="max-height:300px;overflow-y:auto;"></div>
+
+        <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid #333;display:flex;justify-content:space-between;align-items:center;">
+          <span class="text-red" style="font-weight:700;">Grand Total:</span>
+          <span class="text-red" style="font-size:1.3rem;font-weight:700;" id="wkTotal">Rs. 0</span>
+        </div>
+        <button class="btn" style="width:100%;margin-top:1rem;" onclick="submitWalkinOrder()">Place Order</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="takeOrderModal">
+  <div class="modal-box modal-lg">
+    <div class="modal-header-sticky">
+      <button class="modal-close" onclick="closeModal('takeOrderModal')">✕</button>
+      <div class="modal-title" style="color: var(--red);">Take Order – <span id="toRsvId"></span></div>
+    </div>
+    <div class="modal-body-scroll">
+      <p class="text-grey" style="margin-bottom:1rem;font-size:.88rem;">Table: <span id="toTableLabel" class="text-red"></span></p>
+      <div id="takeOrderMenuItems" style="max-height:350px;overflow-y:auto;"></div>
+      <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid #333;display:flex;justify-content:space-between;align-items:center;">
+        <span class="text-red" style="font-weight:700;">Grand Total:</span>
+        <span class="text-red" style="font-size:1.3rem;font-weight:700;" id="toTotal">Rs. 0</span>
+      </div>
+      <input type="hidden" id="toRsvIdHidden">
+      <button class="btn" style="width:100%;margin-top:1rem;" onclick="submitReservationOrder()">Place Reserved Order</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="cancelModal">
+  <div class="modal-box">
+    <div class="modal-header-sticky">
+      <button class="modal-close" onclick="closeModal('cancelModal')">✕</button>
+      <div class="modal-title" style="color: var(--red);">Cancel Order</div>
+    </div>
+    <div class="modal-body-scroll">
+      <div class="form-group">
+        <label>Reason for Cancellation</label>
+        <textarea class="form-control" id="cancelReason" rows="3" placeholder="Enter reason…"></textarea>
+      </div>
+      <input type="hidden" id="cancelOrderId">
+      <button class="btn" style="width:100%;" onclick="confirmCancel()">Confirm Cancellation</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="billModal">
+  <div class="modal-box">
+    <div class="modal-header-sticky">
+      <button class="modal-close" onclick="closeModal('billModal')">✕</button>
+    </div>
+    <div class="modal-body-scroll">
+      <div class="bill-container" id="billContent">
+        </div>
+      <button class="btn" style="width:100%;margin-top:1rem;" onclick="window.print()">🖨️ Print Bill</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="firebase-config.js"></script>
+
+<script>
+// ============================================================
+//  NAVIGATION
+// ============================================================
+function showPage(page) {
+  [
+    'running',
+    'reservations',
+    'dinein',
+    'takeaway',
+    'delivery',
+    'settled',
+    'inventory'
+  ].forEach(p => {
+    document.getElementById('page-' + p)?.classList.add('hidden');
+    document.getElementById('nav-' + p)?.classList.remove('active');
+  });
+
+  document.getElementById('page-' + page)?.classList.remove('hidden');
+  document.getElementById('nav-' + page)?.classList.add('active');
+
+  if (page === 'inventory') {
+    loadReceptionInventory();
+  }
+}
+
+// ============================================================
+//  LIVE DATA LISTENERS
+// ============================================================
+let runningOrders = [];
+let reservations  = [];
+let settledOrders = [];
+let orderTimers   = {}; 
+
+
+
+let CUSTOM_TABLE_METRICS = [
+  {no:1,cap:2,x:5,y:5,w:80,h:60},{no:2,cap:2,x:110,y:5,w:80,h:60},
+  {no:3,cap:4,x:215,y:5,w:100,h:70},{no:4,cap:4,x:340,y:5,w:100,h:70},
+  {no:5,cap:6,x:5,y:95,w:120,h:80},{no:6,cap:6,x:150,y:95,w:120,h:80},
+  {no:7,cap:8,x:300,y:95,w:140,h:90},{no:8,cap:2,x:5,y:210,w:80,h:60},
+  {no:9,cap:4,x:110,y:210,w:100,h:70},{no:10,cap:6,x:240,y:210,w:120,h:80},
+  {no:11,cap:8,x:390,y:210,w:140,h:90},{no:12,cap:4,x:5,y:315,w:100,h:70},
+  {no:13,cap:4,x:130,y:315,w:100,h:70},{no:14,cap:6,x:260,y:315,w:120,h:80},
+];
+
+function openReceptionExpenseModal() {
+  document.getElementById('rc_exp_cat').value = '';
+  document.getElementById('rc_exp_desc').value = '';
+  document.getElementById('rc_exp_amt').value = '';
+  document.getElementById('rc_exp_qty').value = '1';
+  document.getElementById('rc_exp_unit').value = '';
+  document.getElementById('receptionExpenseModal').classList.remove('hidden');
+}
+
+async function submitReceptionExpense() {
+  const category = document.getElementById('rc_exp_cat').value.trim();
+  const description = document.getElementById('rc_exp_desc').value.trim();
+  const amount = parseFloat(document.getElementById('rc_exp_amt').value);
+  const quantity = parseInt(document.getElementById('rc_exp_qty').value) || 1;
+  const unit = document.getElementById('rc_exp_unit').value.trim();
+
+  if (!category || !amount || amount <= 0) {
+    return showToast('Please enter a valid Category and Net Amount Outflow', 'error');
+  }
+
+  try {
+    const expenseData = {
+      categoryHeader: category,
+      lineDescription: description,
+      netAmount: amount,
+      quantity: quantity,
+      unit: unit,
+      authorizedBy: auth.currentUser ? auth.currentUser.email : 'receptionist',
+      status: 'pending', // pending, approved, declined
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    await db.collection('expenses').add(expenseData);
+    closeModal('receptionExpenseModal');
+    showToast('Expense request submitted successfully for Admin approval', 'success');
+  } catch (err) {
+    showToast('Failed to save expense: ' + err.message, 'error');
+  }
+}
+
+// Listen for admin approvals/declines to trigger notifications on the receptionist console
+function listenToExpenseStatusUpdates() {
+  db.collection('expenses')
+    .where('status', 'in', ['approved', 'declined'])
+    .onSnapshot(snapshot => {
+      snapshot.docChanges().forEach(change => {
+        if (change.type === 'modified') {
+          const data = change.doc.data();
+          const statusText = data.status.toUpperCase();
+          addNotification(`Your expense request for <b>${data.categoryHeader}</b> (Rs. ${data.netAmount}) has been <b>${statusText}</b> by Admin.`);
+          playNotificationSound();
+        }
+      });
+    });
+}
+
+// Initialize this listener inside your auth state or initListeners function
+auth.onAuthStateChanged(user => {
+  if (user) {
+    initListeners();
+    listenToExpenseStatusUpdates();
+  }
+});
+
+function initListeners() {
+  db.collection('orders')
+    .where('status', 'in', ['pending', 'accepted', 'prepared', 'served', 'delivered'])
+    .orderBy('createdAt', 'desc') 
+    .onSnapshot(snap => {
+      runningOrders = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderRunningOrders();
+      renderCategoryTabs();
+      updateBadges();
+    }, err => console.warn('Orders listener error:', err));
+
+  db.collection('reservations')
+    .where('status', 'in', ['pending','confirmed'])
+    .orderBy('reservationDate')
+    .orderBy('reservationTime')
+    .onSnapshot(snap => {
+      reservations = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderReservations();
+      updateBadges();
+      checkReservationAlerts();
+    }, err => console.warn('Reservations listener:', err));
+
+  db.collection('orders')
+    .where('status', '==', 'completed')
+    .orderBy('completedAt', 'desc')
+    .limit(200)
+    .onSnapshot(snap => {
+      settledOrders = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      filterSettled();
+    }, err => console.warn('Settled listener:', err));
+      // Inventory listener
+  loadReceptionInventory();
+}
+
+// ============================================================
+//  TABLE MANAGEMENT & CAPACITY MODIFICATION (WITH DELETION)
+// ============================================================
+function openTableMgmtModal() {
+  if(document.getElementById('mgmtNewTableNo')) document.getElementById('mgmtNewTableNo').value = '';
+  document.getElementById('mgmtTableNo').value = '';
+  document.getElementById('mgmtTableCap').value = '';
+  document.getElementById('mgmtTableStatus').value = 'available';
+
+  const selectDropdown = document.getElementById('mgmtTableNo');
+  const deleteDropdown = document.getElementById('deleteTableNo');
+  
+  selectDropdown.innerHTML = '<option value="">-- Choose Existing Table --</option>';
+  deleteDropdown.innerHTML = '<option value="">-- Choose Table to Delete --</option>';
+
+  db.collection('tables').get().then(snap => {
+    let activeTables = [];
+    snap.forEach(d => {
+      const data = d.data();
+      if(data && data.no) activeTables.push(data.no);
+    });
+    
+    activeTables.sort((a, b) => a - b);
+    
+    activeTables.forEach(num => {
+      const opt1 = document.createElement('option');
+      opt1.value = num;
+      opt1.textContent = `Table T${num}`;
+      selectDropdown.appendChild(opt1);
+
+      const opt2 = document.createElement('option');
+      opt2.value = num;
+      opt2.textContent = `Table T${num}`;
+      deleteDropdown.appendChild(opt2);
+    });
+  }).catch(err => console.error("Error populating management list:", err));
+
+  document.getElementById('tableMgmtModal').classList.remove('hidden');
+}
+
+async function submitTableDeletion() {
+  const selectedTableStr = document.getElementById('deleteTableNo').value;
+  if (!selectedTableStr) {
+    return showToast('Please select a valid table number to delete', 'error');
+  }
+
+  const tableNo = parseInt(selectedTableStr);
+  const tableDocId = 'T' + tableNo;
+
+  let promptMsg = tableNo <= 15 ? `Are you sure you want to delete this permanent table (T${tableNo})?` : `Are you sure you want to delete this temporary created table (T${tableNo})?`;
+
+  if (!confirm(promptMsg)) return;
+
+  try {
+    await db.collection('tables').doc(tableDocId).delete();
+    closeModal('tableMgmtModal');
+    alert("Table deleted successfully!");
+    showToast(`Table ${tableDocId} was removed from the active grid layout grid`, 'success');
+  } catch (error) {
+    showToast("Failed to delete the selected layout element: " + error.message, 'error');
+  }
+}
+
+async function submitTableModification() {
+  const existingNo = document.getElementById('mgmtTableNo').value;
+  const newNo = document.getElementById('mgmtNewTableNo').value.trim();
+  const cap = parseInt(document.getElementById('mgmtTableCap').value);
+  const status = document.getElementById('mgmtTableStatus').value;
+
+  if(!existingNo && !newNo) return showToast('Please select an existing table or specify a new table number', 'error');
+  if(!cap || cap < 1) return showToast('Please enter a valid seat capacity', 'error');
+
+  const finalTableNo = existingNo ? parseInt(existingNo) : parseInt(newNo);
+  const tableDocId = 'T' + finalTableNo;
+
+  try {
+    const existingMetrics = (typeof CUSTOM_TABLE_METRICS !== 'undefined') ? CUSTOM_TABLE_METRICS.find(t => t.no === finalTableNo) : null;
+
+    await db.collection('tables').doc(tableDocId).set({
+      no: finalTableNo,
+      capacity: cap,
+      status: status,
+      x: existingMetrics ? (existingMetrics.x || 50) : 50,
+      y: existingMetrics ? (existingMetrics.y || 50) : 50,
+      w: existingMetrics ? (existingMetrics.w || 100) : 100,
+      h: existingMetrics ? (existingMetrics.h || 70) : 70
+    }, { merge: true });
+
+    closeModal('tableMgmtModal');
+    showToast(`Table T${finalTableNo} successfully saved!`, 'success');
+    
+    document.getElementById('mgmtNewTableNo').value = '';
+    document.getElementById('mgmtTableNo').value = '';
+  } catch(e) {
+    showToast('Failed to apply table layout adjustment: ' + e.message, 'error');
+  }
+}
+
+// ============================================================
+//  RUNNING ORDERS TABLE
+// ============================================================
+function renderRunningOrders() {
+  const tbody = document.getElementById('runningBody');
+  if (runningOrders.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="11" class="text-grey text-center" style="padding:2rem;">No running orders</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = runningOrders.map(order => {
+    const timerInfo = orderTimers[order.id];
+    const timerDisplay = timerInfo
+      ? `<span class="countdown ${timerInfo.remaining <= 300 ? 'danger' : timerInfo.remaining <= 900 ? 'warning' : ''}">${formatSeconds(timerInfo.remaining)}</span>`
+      : `<button class="btn" onclick="openTimerModal('${order.id}')">Set Timer</button>`;
+
+    const isDelivery = order.type === 'delivery';
+    const isDineIn   = order.type === 'dine-in' || order.type === 'reserved-dine-in';
+
+    return `
+    <tr id="row-${order.id}" class="${getRowClass(order.id)}">
+      <td><span class="order-id-hover" 
+               onmouseenter="showOrderDetail('${order.id}')"
+               onmouseleave="closeDetailPanel()">${order.id}</span></td>
+      <td><span class="badge ${typeBadgeClass(order.type)}">${order.type || '—'}</span></td>
+      <td>${isDineIn ? (order.tableNo || '—') : '—'}</td>
+      <td>${order.customerName || 'Walk-in'}<br><span class="text-grey" style="font-size:.75rem;">${order.phone || ''}</span></td>
+
+      <td class="check-cell">
+        <label class="custom-check ${order.acceptedAt ? 'done' : ''}">
+          <input type="checkbox" ${order.acceptedAt ? 'checked' : ''} 
+                 ${order.acceptedAt ? 'disabled' : ''}
+                 onchange="markStatus('${order.id}','accepted',this)">
+          Accepted
+        </label>
+      </td>
+      <td class="check-cell">
+        <label class="custom-check ${order.preparedAt ? 'done' : ''}">
+          <input type="checkbox" ${order.preparedAt ? 'checked' : ''}
+                 ${order.preparedAt ? 'disabled' : ''}
+                 onchange="markStatus('${order.id}','prepared',this)">
+          Prepared
+        </label>
+      </td>
+      <td class="check-cell">
+        ${isDelivery ? '' : `
+        <label class="custom-check ${order.servedAt ? 'done' : ''}">
+          <input type="checkbox" ${order.servedAt ? 'checked' : ''}
+                 ${order.servedAt ? 'disabled' : ''}
+                 onchange="markStatus('${order.id}','served',this)">
+          Served/Dispatched
+        </label>
+        `}
+      </td>
+      <td class="check-cell">
+        ${isDelivery
+          ? `<label class="custom-check ${order.deliveredAt ? 'done' : ''}">
+               <input type="checkbox" ${order.deliveredAt ? 'checked' : ''}
+                      ${order.deliveredAt ? 'disabled' : ''}
+                      onchange="markStatus('${order.id}','delivered',this)">
+               Delivered
+             </label>`
+          : ''}
+      </td>
+      <td class="check-cell">
+        <label class="custom-check ${order.completedAt ? 'done' : ''}">
+          <input type="checkbox" ${order.completedAt ? 'checked' : ''}
+                 ${order.completedAt ? 'disabled' : ''}
+                 onchange="markStatus('${order.id}','completed',this)">
+          Completed
+        </label>
+      </td>
+      <td class="timer-cell">${timerDisplay}</td>
+      <td>
+        <button class="btn" onclick="openCancelModal('${order.id}')">Cancel</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function getRowClass(orderId) {
+  const timer = orderTimers[orderId];
+  if (!timer) return '';
+  if (timer.remaining <= 300)  return 'row-red';
+  if (timer.remaining <= 900)  return 'row-yellow';
+  return '';
+}
+
+function typeBadgeClass(type) {
+  return 'badge-red';
+}
+
+// ============================================================
+//  STATUS UPDATES
+// ============================================================
+async function markStatus(orderId, statusKey, checkbox) {
+  const targetOrder = runningOrders.find(o => o.id === orderId);
+  if (targetOrder) {
+    const sequence = ['accepted', 'prepared', targetOrder.type === 'delivery' ? 'delivered' : 'served', 'completed'];
+    const currentIdx = sequence.indexOf(statusKey);
+    if (currentIdx > 0 && !targetOrder[sequence[currentIdx - 1] + 'At']) {
+      if (checkbox) { checkbox.checked = false; checkbox.disabled = false; }
+      return showToast(`Please complete the previous step first!`, 'error');
+    }
+  }
+
+  if (checkbox) checkbox.disabled = true;
+
+  if (statusKey === 'accepted') {
+    openTimerModal(orderId);
+  }
+
+  const now = firebase.firestore.FieldValue.serverTimestamp();
+  const user = auth.currentUser;
+  const byField = statusKey + 'By';
+  const atField = statusKey + 'At';
+
+  let updateData = {
+    [atField]: now,
+    [byField]: user ? user.email : 'receptionist'
+  };
+
+  if (statusKey === 'completed') {
+    updateData.status = 'completed';
+    updateData.completedAt = now;
+  } else {
+    updateData.status = statusKey;
+  }
+
+  try {
+    await db.collection('orders').doc(orderId).update(updateData);
+    await rtdb.ref(`/live_orders/${orderId}/${statusKey}At`).set(Date.now());
+    await rtdb.ref(`/live_orders/${orderId}/status`).set(statusKey);
+
+    if (checkbox) {
+      checkbox.parentElement.classList.add('done');
+    }
+
+    if (statusKey === 'completed') {
+      const order = runningOrders.find(o => o.id === orderId) || settledOrders.find(o => o.id === orderId);
+      if (order && (order.type === 'dine-in' || order.type === 'reserved-dine-in') && order.tableNo) {
+        await db.collection('tables').doc('T' + order.tableNo).set({ status: 'available' }, { merge: true });
+      }
+      
+      if (order && order.reservationId) {
+        await db.collection('reservations').doc(order.reservationId).update({ status: 'completed' });
+        if (order.tableNo) {
+          await db.collection('tables').doc('T' + order.tableNo).set({ status: 'available' }, { merge: true });
+        }
+      }
+      showBill(orderId);
+    }
+    showToast(`Order ${orderId} — ${statusKey} updated live`, 'success');
+  } catch(e) {
+    showToast('Error modifying status: ' + e.message, 'error');
+    if(checkbox) {
+      checkbox.checked = false;
+      checkbox.disabled = false;
+      checkbox.parentElement.classList.remove('done');
+    }
+  }
+}
+
+// ============================================================
+//  TIMER
+// ============================================================
+function openTimerModal(orderId) {
+  document.getElementById('timerOrderId').value = orderId;
+  document.getElementById('timerMinutes').value = '';
+  document.getElementById('timerModal').classList.remove('hidden');
+}
+
+async function confirmTimer() {
+  const orderId  = document.getElementById('timerOrderId').value;
+  const minutes  = parseInt(document.getElementById('timerMinutes').value);
+  if (!minutes || minutes < 1) return showToast('Please enter valid minutes', 'error');
+
+  const startTime = Date.now();
+
+  await db.collection('orders').doc(orderId).update({
+      estimatedMinutes: minutes,
+      countdownStartedAt: startTime
+  });
+
+  await rtdb.ref(`/live_orders/${orderId}`).update({
+      estimatedMinutes: minutes,
+      countdownStartedAt: startTime
+  });
+
+  startCountdown(orderId, minutes * 60);
+  closeModal('timerModal');
+  showToast(`Timer set: ${minutes} minutes for order ${orderId}`, 'success');
+}
+
+function startCountdown(orderId, seconds) {
+  if (orderTimers[orderId]) clearInterval(orderTimers[orderId].interval);
+  orderTimers[orderId] = { remaining: seconds, totalMinutes: seconds / 60 };
+  
+  orderTimers[orderId].interval = setInterval(() => {
+    orderTimers[orderId].remaining--;
+    
+    if (orderTimers[orderId].remaining <= 0) {
+      clearInterval(orderTimers[orderId].interval);
+      const order = runningOrders.find(o => o.id === orderId);
+      showToast(`⚠️ Order ${orderId} is getting late!`, 'error');
+      addNotification(`The Order <b>${orderId}</b> is getting late!`);
+    }
+    
+    const row = document.getElementById('row-' + orderId);
+    if (row) {
+      row.className = getRowClass(orderId);
+      const timerCell = row.querySelector('.timer-cell');
+      if (timerCell) {
+        const remaining = orderTimers[orderId].remaining;
+        timerCell.innerHTML = `<span class="countdown">${formatSeconds(remaining)}</span>`;
+      }
+    }
+    
+    renderCategoryTabs();
+  }, 1000);
+}
+
+function formatSeconds(s) {
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+}
+
+// ============================================================
+//  CANCEL ORDER
+// ============================================================
+function openCancelModal(orderId) {
+  document.getElementById('cancelOrderId').value = orderId;
+  document.getElementById('cancelReason').value = '';
+  document.getElementById('cancelModal').classList.remove('hidden');
+}
+
+async function confirmCancel() {
+  const orderId = document.getElementById('cancelOrderId').value;
+  const reason = document.getElementById('cancelReason').value.trim() || 'Receptionist Manual Abort Execution';
+  try {
+    const targetOrder = runningOrders.find(o => o.id === orderId) || {};
+    
+    await db.collection('orders').doc(orderId).update({ 
+      status: 'cancelled', 
+      cancelledAt: Date.now(),
+      cancellationReason: reason
+    });
+    
+    await rtdb.ref(`/live_orders/${orderId}`).update({ 
+      status: 'cancelled', 
+      cancelledAt: Date.now() 
+    });
+    
+    if (targetOrder && targetOrder.tableNo) {
+      await db.collection('tables').doc('T' + targetOrder.tableNo).update({ status: 'available' });
+    }
+    
+    closeModal('cancelModal');
+    showToast(`Order line execution successfully cancelled`, 'success');
+  } catch(e) {
+    showToast(`Cancellation error: ` + e.message, 'error');
+  }
+}
+
+// ============================================================
+//  ORDER DETAIL PANEL
+// ============================================================
+async function showOrderDetail(orderId) {
+  const panel = document.getElementById('detailPanel');
+  panel.classList.add('open');
+  const order = runningOrders.find(o => o.id === orderId)
+             || settledOrders.find(o => o.id === orderId);
+  if (!order) {
+    document.getElementById('detailContent').innerHTML = '<p class="text-grey">Loading…</p>';
+    return;
+  }
+
+  const now = new Date();
+  let itemsHtml = '';
+  if (order.items && order.items.length) {
+    itemsHtml = `
+    <table class="data-table" style="margin-top:.5rem;">
+      <thead><tr><th>Item</th><th>Qty</th><th>Rate</th><th>Amount</th></tr></thead>
+      <tbody>${order.items.map(i => {
+        const itemRate = i.rate || i.price || 0;
+        const itemAmount = i.amount || (i.qty * itemRate);
+        return `
+        <tr>
+          <td>${i.itemName || i.name || 'Item'}</td>
+          <td>${i.qty}</td>
+          <td>Rs. ${itemRate.toLocaleString()}</td>
+          <td class="text-red">Rs. ${itemAmount.toLocaleString()}</td>
+        </tr>`;
+      }).join('')}
+      </tbody>
+      <tfoot>
+        <tr><td colspan="3" style="text-align:right;font-weight:700;color:var(--red);">Grand Total</td>
+            <td style="font-weight:700;color:var(--red);">Rs. ${order.grandTotal?.toLocaleString()}</td></tr>
+      </tfoot>
+    </table>`;
+  }
+
+  document.getElementById('detailContent').innerHTML = `
+    <div style="margin-bottom:1rem;">
+      <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:var(--grey);">Order ID</div>
+      <div style="font-weight:700;color:var(--red);">${order.id}</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin-bottom:1rem;">
+      <div><div class="text-grey" style="font-size:.72rem;">Customer</div><div style="font-weight:600;">${order.customerName || 'Walk-in'}</div></div>
+      <div><div class="text-grey" style="font-size:.72rem;">Cell No</div><div>${order.phone || '—'}</div></div>
+      <div><div class="text-grey" style="font-size:.72rem;">Type</div><div><span class="badge badge-red">${order.type}</span></div></div>
+      ${order.tableNo ? `<div><div class="text-grey" style="font-size:.72rem;">Table</div><div>T${order.tableNo}</div></div>` : ''}
+      <div><div class="text-grey" style="font-size:.72rem;">Created At</div><div style="font-size:.82rem;">${formatTs(order.createdAt)}</div></div>
+    </div>
+    ${itemsHtml}`;
+}
+
+function closeDetailPanel() {
+  document.getElementById('detailPanel').classList.remove('open');
+}
+
+// ============================================================
+//  CATEGORY TABS (Dine In, Takeaway, Delivery)
+// ============================================================
+function renderCategoryTabs() {
+  const dineOrders  = runningOrders.filter(o => o.type?.toLowerCase().includes('dine'));
+  const taOrders    = runningOrders.filter(o => o.type?.toLowerCase().includes('takeaway') || o.type?.toLowerCase() === 't');
+  const delOrders   = runningOrders.filter(o => o.type?.toLowerCase().includes('delivery') || o.type?.toLowerCase() === 'd');
+
+  renderCategoryTable('dineBody', dineOrders, 'dine');
+  renderCategoryTable('taBody',   taOrders,   'ta');
+  renderCategoryTable('delBody',  delOrders,  'del');
+}
+
+function renderCategoryTable(tbodyId, orders, type) {
+  const tbody = document.getElementById(tbodyId);
+  if (!tbody) return;
+  if (orders.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" class="text-grey text-center" style="padding:1rem;">No orders</td></tr>';
+    return;
+  }
+  tbody.innerHTML = orders.map((o, i) => {
+    let timerDisplay = '—';
+    
+    if (orderTimers[o.id]) {
+      const timerInfo = orderTimers[o.id];
+      timerDisplay = `<span class="countdown">${formatSeconds(timerInfo.remaining)}</span>`;
+    } 
+    else if (o.createdAt) {
+      const createdDate = o.createdAt.toDate ? o.createdAt.toDate() : new Date(o.createdAt);
+      const elapsedMs = new Date() - createdDate;
+      const elapsedMins = Math.floor(elapsedMs / 60000);
+      timerDisplay = `<span class="text-grey">${elapsedMins}m elapsed</span>`;
+    }
+
+    return `
+    <tr>
+      <td>${i+1}</td>
+      <td><span class="order-id-hover" onmouseenter="showOrderDetail('${o.id}')" onmouseleave="closeDetailPanel()">${o.id}</span></td>
+      ${type === 'dine' ? `<td>T${o.tableNo || '—'}</td>` : ''}
+      ${type === 'del'  ? `<td style="font-size:.8rem;">${o.deliveryAddress || '—'}</td>` : ''}
+      <td class="timer-cell">${timerDisplay}</td>
+      <td><span class="badge badge-red">${o.status}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+// ============================================================
+//  RESERVATIONS WITH REASON PROMPT
+// ============================================================
+function renderReservations() {
+  const tbody = document.getElementById('rsvBody');
+  if (reservations.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="11" class="text-grey text-center" style="padding:2rem;">No upcoming reservations</td></tr>';
+    return;
+  }
+  tbody.innerHTML = reservations.map((r, i) => `
+    <tr>
+      <td>${i+1}</td>
+      <td class="text-red" style="font-weight:700;font-size:.8rem;">${r.reservationId}</td>
+      <td>${r.customerName}</td>
+      <td>${r.phone}</td>
+      <td>T${r.tableNo} (${r.capacity || '?'} seats)</td>
+      <td>${r.reservationDate}</td>
+      <td>${r.reservationTime}</td>
+      <td>${r.partySize}</td>
+      <td style="font-size:.78rem;">${formatTs(r.reservedOn)}</td>
+      <td><span class="badge badge-red">${r.status}</span></td>
+      <td style="display:flex;gap:.4rem;flex-wrap:wrap;">
+        ${r.status === 'pending' ? `
+          <button class="btn" onclick="confirmReservation('${r.reservationId}')">✓ Confirm</button>
+          <button class="btn" onclick="cancelReservation('${r.reservationId}')">✕ Cancel</button>
+        ` : ''}
+        ${r.status === 'confirmed' ? `
+          <button class="btn" onclick="openTakeOrder('${r.reservationId}')">📝 Take Order</button>
+        ` : ''}
+      </td>
+    </tr>`).join('');
+}
+
+async function confirmReservation(rsvId) {
+  await db.collection('reservations').doc(rsvId).update({ status: 'confirmed' });
+  showToast(`Reservation ${rsvId} confirmed`, 'success');
+}
+
+async function cancelReservation(rsvId) {
+  const reason = prompt("Please enter a reason for cancelling this reservation:");
+  if (reason === null) return; // User pressed cancel on the prompt window
+  
+  const finalReason = reason.trim() || "No cancellation reason specified by receptionist.";
+  const rsv = reservations.find(r => r.reservationId === rsvId);
+  
+  try {
+    await db.collection('reservations').doc(rsvId).update({ 
+      status: 'cancelled',
+      cancellationReason: finalReason
+    });
+    
+    if (rsv?.tableNo) {
+      await db.collection('tables').doc('T' + rsv.tableNo).update({ status: 'available' });
+    }
+    showToast(`Reservation ${rsvId} cancelled, reason saved.`, 'success');
+  } catch(err) {
+    showToast('Failed to cancel reservation: ' + err.message, 'error');
+  }
+}
+
+// ============================================================
+//  TAKE ORDER FROM RESERVATION
+// ============================================================
+let takeOrderCart = [];
+let currentRsvId  = null;
+
+async function openTakeOrder(rsvId) {
+  currentRsvId = rsvId;
+  takeOrderCart = [];
+  const rsv = reservations.find(r => r.reservationId === rsvId);
+  document.getElementById('toRsvId').textContent = rsvId;
+  document.getElementById('toRsvIdHidden').value = rsvId;
+  document.getElementById('toTableLabel').textContent = `T${rsv?.tableNo} — ${rsv?.customerName}`;
+  renderTakeOrderMenu();
+  document.getElementById('takeOrderModal').classList.remove('hidden');
+}
+
+function renderTakeOrderMenu() {
+  const container = document.getElementById('takeOrderMenuItems');
+  let html = '';
+  Object.entries(SAMPLE_MENU).forEach(([cat, items]) => {
+    html += `<div class="card-header" style="margin-top:.5rem; color: var(--red);">${cat}</div>`;
+    items.forEach(item => {
+      const inCart = takeOrderCart.find(c => c.id === item.id);
+      const qty = inCart ? inCart.qty : 0;
+      html += `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:.5rem 0;border-bottom:1px solid #333;font-size:.88rem;">
+        <div>
+          <div style="font-weight:600;">${item.emoji} ${item.name}</div>
+          <div class="text-red">Rs. ${item.price}</div>
+        </div>
+        <div class="qty-control">
+          <button class="btn" style="padding:0.1rem 0.5rem;" onclick="changeTOCartQty('${item.id}','${item.name}',${item.price},-1)">−</button>
+          <span class="qty-val" style="margin: 0 0.5rem;">${qty}</span>
+          <button class="btn" style="padding:0.1rem 0.5rem;" onclick="changeTOCartQty('${item.id}','${item.name}',${item.price},1)">+</button>
+        </div>
+      </div>`;
+    });
+  });
+  container.innerHTML = html;
+  updateTOTotal();
+}
+
+function changeTOCartQty(id, name, price, delta) {
+  const idx = takeOrderCart.findIndex(c => c.id === id);
+  if (idx < 0) { if (delta > 0) takeOrderCart.push({id,name,price,qty:1}); }
+  else {
+    takeOrderCart[idx].qty += delta;
+    if (takeOrderCart[idx].qty <= 0) takeOrderCart.splice(idx, 1);
+  }
+  renderTakeOrderMenu();
+}
+
+function updateTOTotal() {
+  const total = takeOrderCart.reduce((s,c) => s + c.qty * c.price, 0);
+  document.getElementById('toTotal').textContent = `Rs. ${total.toLocaleString()}`;
+}
+
+async function submitReservationOrder() {
+  if (takeOrderCart.length === 0) return showToast('Please add items', 'error');
+  const rsv = reservations.find(r => r.reservationId === currentRsvId);
+  
+  try {
+    const orderId = await window.generateOrderId('RDi');
+    const grandTotal = takeOrderCart.reduce((s,c) => s + c.qty * c.price, 0);
+
+    const orderData = {
+      orderId, prefix: 'RDi', type: 'reserved-dine-in',
+      reservationId: currentRsvId,
+      customerId: rsv?.customerId || null,
+      customerName: rsv?.customerName, phone: rsv?.phone,
+      tableNo: rsv?.tableNo,
+      items: takeOrderCart.map(c => ({ itemId:c.id,itemName:c.name,qty:c.qty,rate:c.price,amount:c.qty*c.price })),
+      grandTotal,
+      status: 'pending',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    await db.collection('orders').doc(orderId).set(orderData);
+    await db.collection('reservations').doc(currentRsvId).update({ status: 'seated' });
+    await db.collection('tables').doc('T' + rsv?.tableNo).update({ status: 'occupied' });
+    await rtdb.ref(`/live_orders/${orderId}`).set({ status: 'pending' });
+
+    closeModal('takeOrderModal');
+    showToast(`Order ${orderId} placed for reservation ${currentRsvId}`, 'success');
+  } catch(err) {
+    showToast('Failed to create reservation order: ' + err.message, 'error');
+  }
+}
+
+// ============================================================
+//  WALK-IN ORDER
+// ============================================================
+let walkinCart = [];
+let walkinTableNo = null;
+const SAMPLE_MENU = {
+  'Starters':   [
+    { id:'m1', name:'Seekh Kabab', price:650, emoji:'🍢' },
+    { id:'m2', name:'Shami Kabab', price:550, emoji:'🥩' },
+    { id:'m3', name:'Samosa Platter', price:350, emoji:'🫔' },
+  ],
+  'Main Course': [
+    { id:'m4', name:'Nihari', price:950, emoji:'🍲' },
+    { id:'m5', name:'Karahi Gosht', price:1100, emoji:'🥘' },
+    { id:'m6', name:'Chicken Biryani', price:750, emoji:'🍛' },
+    { id:'m7', name:'Butter Chicken', price:900, emoji:'🍗' },
+  ],
+  'Breads': [
+    { id:'m8', name:'Naan', price:80, emoji:'🫓' },
+    { id:'m9', name:'Paratha', price:100, emoji:'🫓' },
+    { id:'m10',name:'Roghni Naan', price:120, emoji:'🫓' },
+  ],
+  'Beverages': [
+    { id:'m11',name:'Lassi (Sweet)', price:200, emoji:'🥛' },
+    { id:'m12',name:'Rooh Afza', price:150, emoji:'🍹' },
+    { id:'m13',name:'Kashmiri Chai', price:250, emoji:'🍵' },
+  ],
+  'Desserts': [
+    { id:'m14',name:'Gulab Jamun', price:300, emoji:'🍮' },
+    { id:'m15',name:'Kheer', price:280, emoji:'🍮' },
+  ]
+};
+
+function openWalkinModal() {
+  walkinCart = [];
+  walkinTableNo = null;
+  document.getElementById('wk_name').value = '';
+  document.getElementById('wk_phone').value = '';
+  document.getElementById('walkinStep1').classList.remove('hidden');
+  document.getElementById('walkinStep2').classList.add('hidden');
+  document.getElementById('walkinModal').classList.remove('hidden');
+  renderFloorPlanReceptionist('walkinFloorPlan', (tbl) => {
+    walkinTableNo = tbl.no;
+    document.getElementById('walkinTableLabel').textContent = `Table: T${tbl.no} (${tbl.cap} seats)`;
+    document.getElementById('walkinStep1').classList.add('hidden');
+    document.getElementById('walkinStep2').classList.remove('hidden');
+    renderWalkinMenu();
+  });
+}
+
+function showStep1() {
+  document.getElementById('walkinStep1').classList.remove('hidden');
+  document.getElementById('walkinStep2').classList.add('hidden');
+}
+
+function renderFloorPlanReceptionist(containerId, onSelect) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  
+  container.innerHTML = '';
+  const STANDARD_W = 100;
+  const STANDARD_H = 60;
+  
+  db.collection('tables').get().then(snap => {
+    const databaseTables = {};
+    snap.forEach(d => { databaseTables[d.id] = d.data(); });
+    
+    let unifiedLayoutList = [];
+    CUSTOM_TABLE_METRICS.forEach(tbl => {
+      unifiedLayoutList.push({ ...tbl, w: STANDARD_W, h: STANDARD_H });
+    });
+    
+    Object.keys(databaseTables).forEach(id => {
+      const numericId = parseInt(id.replace('T', ''));
+      if (!unifiedLayoutList.some(t => t.no === numericId)) {
+        unifiedLayoutList.push({
+          no: numericId,
+          cap: databaseTables[id].capacity || 4,
+          w: STANDARD_W,
+          h: STANDARD_H,
+        });
+      }
+    });
+
+    unifiedLayoutList.forEach((tbl, index) => {
+      const tablesPerLine = 5;
+      const xGap = 150; 
+      const yGap = 110;  
+      const offsetMultiplier = index % tablesPerLine;
+      const rowMultiplier = Math.floor(index / tablesPerLine);
+      tbl.x = 5 + (offsetMultiplier * xGap);
+      tbl.y = 5 + (rowMultiplier * yGap);
+    });
+
+    unifiedLayoutList.forEach(tbl => {
+      const dbRecord = databaseTables['T' + tbl.no];
+      const status = dbRecord?.status || 'available';
+      const seatCapacity = dbRecord?.capacity || tbl.cap;
+
+      const div = document.createElement('div');
+      div.className = `floor-table ${status}`;
+      div.style.cssText = `left:${tbl.x}px;top:${tbl.y}px;width:${tbl.w}px;height:${tbl.h}px;position:absolute;border:1px solid #e60000;background:#111;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;`;
+      div.innerHTML = `<span class="table-no">T${tbl.no}</span><span class="cap-label" style="font-size:0.7rem;color:#aaa;">${seatCapacity} seats</span>`;
+      
+      div.onclick = () => onSelect({ no: tbl.no, cap: seatCapacity });
+      container.appendChild(div);
+    });
+  }).catch((err) => {
+    console.error("Error reading floor statuses:", err);
+  });
+}
+
+function renderWalkinMenu() {
+  const container = document.getElementById('walkinMenuItems');
+  let html = '';
+  Object.entries(SAMPLE_MENU).forEach(([cat, items]) => {
+    html += `<div class="card-header" style="margin-top:.5rem; color: var(--red);">${cat}</div>`;
+    items.forEach(item => {
+      const inCart = walkinCart.find(c => c.id === item.id);
+      const qty = inCart ? inCart.qty : 0;
+      html += `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:.5rem 0;border-bottom:1px solid #333;font-size:.88rem;">
+        <div><div style="font-weight:600;">${item.emoji} ${item.name}</div>
+             <div class="text-red">Rs. ${item.price}</div></div>
+        <div class="qty-control">
+          <button class="btn" style="padding:0.1rem 0.5rem;" onclick="changeWkQty('${item.id}','${item.name}',${item.price},-1)">−</button>
+          <span class="qty-val" style="margin: 0 0.5rem;">${qty}</span>
+          <button class="btn" style="padding:0.1rem 0.5rem;" onclick="changeWkQty('${item.id}','${item.name}',${item.price},1)">+</button>
+        </div>
+      </div>`;
+    });
+  });
+  container.innerHTML = html;
+  updateWkTotal();
+}
+
+function changeWkQty(id, name, price, delta) {
+  const idx = walkinCart.findIndex(c => c.id === id);
+  if (idx < 0) { if (delta > 0) walkinCart.push({id,name,price,qty:1}); }
+  else {
+    walkinCart[idx].qty += delta;
+    if (walkinCart[idx].qty <= 0) walkinCart.splice(idx, 1);
+  }
+  renderWalkinMenu();
+}
+
+function updateWkTotal() {
+  const total = walkinCart.reduce((s,c) => s + c.qty * c.price, 0);
+  document.getElementById('wkTotal').textContent = `Rs. ${total.toLocaleString()}`;
+}
+
+async function submitWalkinOrder() {
+  if (!walkinTableNo) return showToast('No table selected', 'error');
+  if (walkinCart.length === 0) return showToast('Add items to order', 'error');
+  const name  = document.getElementById('wk_name').value.trim() || 'Walk-in';
+  const phone = document.getElementById('wk_phone').value.trim();
+  
+  try {
+    const orderId = await window.generateOrderId('Di');
+    const grandTotal = walkinCart.reduce((s,c) => s + c.qty * c.price, 0);
+
+    const orderData = {
+      orderId, prefix:'Di', type:'dine-in',
+      customerName: name, phone,
+      tableNo: walkinTableNo,
+      items: walkinCart.map(c => ({itemId:c.id,itemName:c.name,qty:c.qty,rate:c.price,amount:c.qty*c.price})),
+      grandTotal,
+      status: 'pending',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    
+    await db.collection('orders').doc(orderId).set(orderData);
+    await db.collection('tables').doc('T' + walkinTableNo).set({ status: 'occupied' }, { merge: true });
+    await rtdb.ref(`/live_orders/${orderId}`).set({ status: 'pending' });
+
+    closeModal('walkinModal');
+    showToast(`Order ${orderId} placed — Table T${walkinTableNo}`, 'success');
+  } catch(err) {
+    showToast('Failed to create walk-in order: ' + err.message, 'error');
+  }
+}
+
+// ============================================================
+//  BILL (FIXED FALLBACK LOGIC)
+// ============================================================
+async function showBill(orderId) {
+  const order = runningOrders.find(o => o.id === orderId)
+             || settledOrders.find(o => o.id === orderId);
+  if (!order) return;
+
+  // FIX: Checked and verified correct matching fallbacks for item rows names
+  const itemRows = (order.items || []).map(i => {
+    const itemRate = i.rate || i.price || 0;
+    const itemAmount = i.amount || (i.qty * itemRate);
+    return `
+    <tr>
+      <td style="color: #000; text-align: left;">${i.itemName || i.name || 'Delicious Item'}</td>
+      <td style="text-align:center; color: #000;">${i.qty}</td>
+      <td style="text-align:right; color: #000;">Rs.${itemRate.toLocaleString()}</td>
+      <td style="text-align:right; color: #000;">Rs.${itemAmount.toLocaleString()}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('billContent').innerHTML = `
+    <div class="bill-header" style="color: #000; text-align: center;">
+      <h2 style="color: #000; margin-bottom: 0.2rem;">Nawab Restaurant</h2>
+      <p style="font-size:.8rem;color:#555; margin-top: 0;">Fine Dining · Kamra, Pakistan<br>Tel: +92 300 0000000</p>
+    </div>
+    <table class="bill-table" style="width: 100%; color: #000; font-size: 0.85rem; margin-bottom: 1rem;">
+      <tr><td><b>Order ID:</b></td><td>${order.orderId || order.id}</td></tr>
+      <tr><td><b>Customer:</b></td><td>${order.customerName || 'Walk-in'}</td></tr>
+      <tr><td><b>Phone:</b></td><td>${order.phone || '—'}</td></tr>
+      ${order.tableNo ? `<tr><td><b>Table:</b></td><td>T${order.tableNo}</td></tr>` : ''}
+      <tr><td><b>Type:</b></td><td>${order.type}</td></tr>
+      <tr><td><b>Date:</b></td><td>${new Date().toLocaleDateString('en-PK')}</td></tr>
+    </table>
+    <hr style="border: 0; border-top: 1px dashed #000; margin:.8rem 0;">
+    <table style="width: 100%; color: #000; font-size: 0.85rem; border-collapse: collapse;">
+      <thead>
+        <tr style="border-bottom: 1px solid #000;">
+          <th style="text-align: left; background: none !important; color: #000 !important;">Item</th>
+          <th style="text-align: center; background: none !important; color: #000 !important;">Qty</th>
+          <th style="text-align: right; background: none !important; color: #000 !important;">Rate</th>
+          <th style="text-align: right; background: none !important; color: #000 !important;">Total</th>
+        </tr>
+      </thead>
+      <tbody>${itemRows}</tbody>
+    </table>
+    <hr style="border: 0; border-top: 1px dashed #000; margin:.8rem 0;">
+    <div style="text-align: right; font-weight: bold; font-size: 1.1rem; color: #000;">Grand Total: Rs. ${order.grandTotal?.toLocaleString()}</div>
+    <p style="text-align:center;font-size:.75rem;margin-top:1.5rem;color:#555;">Thank you for dining at Nawab!<br>Please visit again.</p>`;
+
+  document.getElementById('billModal').classList.remove('hidden');
+}
+
+// ============================================================
+//  SETTLED ORDERS
+// ============================================================
+function filterSettled() {
+  const filter  = document.getElementById('settledFilter')?.value || 'today';
+  const now     = new Date();
+  const filtered = settledOrders.filter(o => {
+    if (!o.completedAt) return false;
+    const d = o.completedAt.toDate ? o.completedAt.toDate() : new Date(o.completedAt);
+    if (filter === 'today') return d.toDateString() === now.toDateString();
+    if (filter === 'week') {
+      const weekAgo = new Date(); weekAgo.setDate(now.getDate() - 7);
+      return d >= weekAgo;
+    }
+    if (filter === 'month') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    return true;
+  });
+
+  let runningTotal = 0;
+  const tbody = document.getElementById('settledBody');
+  if (filtered.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" class="text-grey text-center" style="padding:2rem;">No settled orders for this period</td></tr>';
+    document.getElementById('settledGrandTotal').textContent = 'Rs. 0';
+    return;
+  }
+  tbody.innerHTML = filtered.map((o, i) => {
+    runningTotal += (o.grandTotal || 0);
+    return `
+    <tr>
+      <td>${i+1}</td>
+      <td><span class="order-id-hover" onmouseenter="showSettledDetail('${o.id}')" onmouseleave="closeDetailPanel()">${o.id}</span></td>
+      <td>${o.customerName || 'Walk-in'}</td>
+      <td>${o.phone || '—'}</td>
+      <td><span class="badge badge-red">${o.type}</span></td>
+      <td style="font-size:.8rem;">${formatTs(o.completedAt)}</td>
+      <td class="text-red" style="font-weight:700;">Rs. ${o.grandTotal?.toLocaleString()}</td>
+      <td class="text-red">Rs. ${runningTotal.toLocaleString()}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('settledGrandTotal').textContent = `Rs. ${runningTotal.toLocaleString()}`;
+}
+
+async function showSettledDetail(orderId) {
+  const order = settledOrders.find(o => o.id === orderId);
+  if (order) showOrderDetail(orderId);
+}
+
+// ============================================================
+//  BADGES
+// ============================================================
+function updateBadges() {
+  document.getElementById('runningBadge').textContent = runningOrders.length;
+  document.getElementById('rsvBadge').textContent = reservations.length;
+  document.getElementById('dineBadge').textContent = runningOrders.filter(o => o.type === 'dine-in' || o.type === 'reserved-dine-in').length;
+  document.getElementById('taBadge').textContent   = runningOrders.filter(o => o.type === 'takeaway').length;
+  document.getElementById('delBadge').textContent  = runningOrders.filter(o => o.type === 'delivery').length;
+}
+
+// ============================================================
+//  RESERVATION ALERTS
+// ============================================================
+function checkReservationAlerts() {
+  reservations.forEach(r => {
+    if (r.status === 'pending' && !r._alerted) {
+      addNotification(`New Reservation: <b>${r.reservationId}</b> — ${r.customerName} — Table T${r.tableNo}`);
+      playNotificationSound();
+      r._alerted = true;
+    }
+  });
+}
+
+function addNotification(msg) {
+  const area = document.getElementById('notificationArea');
+  const div = document.createElement('div');
+  div.className = 'notif-bar';
+  div.innerHTML = `🔔 ${msg} <button style="margin-left:auto;background:none;border:none;color:var(--grey);cursor:pointer;" onclick="this.parentElement.remove()">✕</button>`;
+  area.prepend(div);
+  setTimeout(() => div.remove(), 30000);
+}
+
+function playNotificationSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.3);
+  } catch(e) {}
+}
+// ============================================================
+// INVENTORY MANAGEMENT - RECEPTIONIST
+// ============================================================
+
+let receptionInventoryRequests = [];
+
+
+// ------------------------------------------------------------
+// CALCULATE TOTAL PRICE
+// ------------------------------------------------------------
+
+function calculateInventoryTotal() {
+
+  const quantity =
+    parseFloat(document.getElementById('inv_quantity').value) || 0;
+
+  const unitPrice =
+    parseFloat(document.getElementById('inv_amount').value) || 0;
+
+  const total = quantity * unitPrice;
+
+  document.getElementById('inv_total').value =
+    total > 0 ? total.toFixed(2) : '';
+}
+
+
+// ------------------------------------------------------------
+// OPEN ADD INVENTORY
+// ------------------------------------------------------------
+
+function openAddInventoryModal() {
+
+  document.getElementById('inventoryModalTitle').textContent =
+    'Add Inventory';
+
+  document.getElementById('inventorySubmitBtn').textContent =
+    'Submit For Admin Approval';
+
+  document.getElementById('inventoryEditId').value = '';
+
+  document.getElementById('inv_name').value = '';
+  document.getElementById('inv_quantity').value = '';
+  document.getElementById('inv_amount').value = '';
+  document.getElementById('inv_total').value = '';
+  document.getElementById('inv_supplier').value = '';
+  document.getElementById('inv_invoice').value = '';
+
+  document.getElementById('inventoryModal')
+    .classList.remove('hidden');
+}
+
+
+// ------------------------------------------------------------
+// SUBMIT ADD / EDIT INVENTORY
+// ------------------------------------------------------------
+
+async function submitInventoryRequest() {
+
+  const editId =
+    document.getElementById('inventoryEditId').value.trim();
+
+  const name =
+    document.getElementById('inv_name').value.trim();
+
+  const quantity =
+    parseFloat(document.getElementById('inv_quantity').value);
+
+  const unitPrice =
+    parseFloat(document.getElementById('inv_amount').value);
+
+  const supplier =
+    document.getElementById('inv_supplier').value.trim();
+
+  const invoiceNo =
+    document.getElementById('inv_invoice').value.trim();
+
+  const totalPrice = quantity * unitPrice;
+
+
+  if (!name)
+    return showToast(
+      'Please enter inventory item name',
+      'error'
+    );
+
+  if (!quantity || quantity <= 0)
+    return showToast(
+      'Please enter a valid quantity',
+      'error'
+    );
+
+  if (!unitPrice || unitPrice <= 0)
+    return showToast(
+      'Please enter a valid unit purchase price',
+      'error'
+    );
+
+  if (!supplier)
+    return showToast(
+      'Please enter Purchased From / Supplier',
+      'error'
+    );
+
+  if (!invoiceNo)
+    return showToast(
+      'Please enter Invoice Number',
+      'error'
+    );
+
+
+  try {
+
+    const data = {
+
+      itemName: name,
+
+      quantity: quantity,
+
+      unitPrice: unitPrice,
+
+      totalPrice: totalPrice,
+
+      purchasedFrom: supplier,
+
+      invoiceNo: invoiceNo,
+
+      status: 'pending',
+
+      requestType: editId ? 'edit' : 'add',
+
+      requestedBy:
+        auth.currentUser
+          ? auth.currentUser.email
+          : 'receptionist',
+
+      updatedAt:
+        firebase.firestore.FieldValue.serverTimestamp()
+
+    };
+
+
+    if (editId) {
+
+      await db
+        .collection('inventoryRequests')
+        .doc(editId)
+        .update(data);
+
+      showToast(
+        'Edited inventory sent to Admin for approval',
+        'success'
+      );
+
+    } else {
+
+      await db
+        .collection('inventoryRequests')
+        .add({
+
+          ...data,
+
+          createdAt:
+            firebase.firestore.FieldValue.serverTimestamp()
+
+        });
+
+      showToast(
+        'New inventory sent to Admin for approval',
+        'success'
+      );
+
+    }
+
+
+    closeModal('inventoryModal');
+
+    loadReceptionInventory();
+
+  } catch (error) {
+
+    console.error(error);
+
+    showToast(
+      'Failed to submit inventory: ' +
+      error.message,
+      'error'
+    );
+
+  }
+}
+
+
+// ------------------------------------------------------------
+// LOAD INVENTORY REQUESTS
+// ------------------------------------------------------------
+
+function loadReceptionInventory() {
+
+  db.collection('inventoryRequests')
+    .orderBy('updatedAt', 'desc')
+    .onSnapshot(snapshot => {
+
+      receptionInventoryRequests =
+        snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+
+      renderReceptionInventory();
+
+    }, error => {
+
+      console.error(
+        'Inventory listener error:',
+        error
+      );
+
+      showToast(
+        'Unable to load inventory: ' +
+        error.message,
+        'error'
+      );
+
+    });
+}
+
+
+// ------------------------------------------------------------
+// RENDER INVENTORY
+// ------------------------------------------------------------
+
+function renderReceptionInventory() {
+
+  const tbody =
+    document.getElementById(
+      'receptionInventoryBody'
+    );
+
+  if (!tbody) return;
+
+
+  if (receptionInventoryRequests.length === 0) {
+
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="10"
+            class="text-grey text-center"
+            style="padding:2rem;">
+          No inventory requests found
+        </td>
+      </tr>
+    `;
+
+    return;
+  }
+
+
+  tbody.innerHTML =
+    receptionInventoryRequests.map((item, index) => {
+
+      let dateText = '--';
+
+      if (item.updatedAt?.toDate) {
+
+        dateText =
+          item.updatedAt
+            .toDate()
+            .toLocaleString('en-PK');
+
+      }
+
+
+      let statusStyle =
+        'background:#F9A825;color:#fff;';
+
+      if (item.status === 'approved') {
+        statusStyle =
+          'background:#2E7D32;color:#fff;';
+      }
+
+      if (item.status === 'declined') {
+        statusStyle =
+          'background:#C62828;color:#fff;';
+      }
+
+
+      return `
+        <tr>
+
+          <td>
+            <input
+              type="radio"
+              name="selectedInventory"
+              value="${item.id}">
+          </td>
+
+          <td>${index + 1}</td>
+
+          <td>
+            <b>${escapeInventoryHtml(item.itemName || '--')}</b>
+          </td>
+
+          <td>${item.quantity || 0}</td>
+
+          <td>
+            Rs. ${(Number(item.unitPrice) || 0)
+              .toLocaleString()}
+          </td>
+
+          <td>
+            <b>
+              Rs. ${(Number(item.totalPrice) || 0)
+                .toLocaleString()}
+            </b>
+          </td>
+
+          <td>
+            ${escapeInventoryHtml(
+              item.purchasedFrom || '--'
+            )}
+          </td>
+
+          <td>
+            ${escapeInventoryHtml(
+              item.invoiceNo || '--'
+            )}
+          </td>
+
+          <td>
+            <span
+              class="badge"
+              style="${statusStyle}">
+              ${(item.status || 'pending').toUpperCase()}
+            </span>
+          </td>
+
+          <td>${dateText}</td>
+
+        </tr>
+      `;
+
+    }).join('');
+}
+
+
+// ------------------------------------------------------------
+// EDIT INVENTORY
+// ------------------------------------------------------------
+
+function openEditInventoryModal() {
+
+  const selected =
+    document.querySelector(
+      'input[name="selectedInventory"]:checked'
+    );
+
+  if (!selected) {
+    return showToast(
+      'Please select an inventory item first',
+      'error'
+    );
+  }
+
+
+  const item =
+    receptionInventoryRequests.find(
+      x => x.id === selected.value
+    );
+
+
+  if (!item) {
+    return showToast(
+      'Inventory item could not be found',
+      'error'
+    );
+  }
+
+
+  if (item.status !== 'approved') {
+    return showToast(
+      'Only approved inventory can be edited',
+      'error'
+    );
+  }
+
+
+  document.getElementById(
+    'inventoryModalTitle'
+  ).textContent = 'Edit Inventory';
+
+
+  document.getElementById(
+    'inventorySubmitBtn'
+  ).textContent =
+    'Submit Edited Inventory For Approval';
+
+
+  document.getElementById(
+    'inventoryEditId'
+  ).value = item.id;
+
+
+  document.getElementById('inv_name').value =
+    item.itemName || '';
+
+  document.getElementById('inv_quantity').value =
+    item.quantity || '';
+
+  document.getElementById('inv_amount').value =
+    item.unitPrice || '';
+
+  document.getElementById('inv_total').value =
+    item.totalPrice || '';
+
+  document.getElementById('inv_supplier').value =
+    item.purchasedFrom || '';
+
+  document.getElementById('inv_invoice').value =
+    item.invoiceNo || '';
+
+
+  document.getElementById(
+    'inventoryModal'
+  ).classList.remove('hidden');
+}
+
+
+// ------------------------------------------------------------
+// DELETE INVENTORY
+// ------------------------------------------------------------
+
+function deleteSelectedInventory() {
+
+  const selected =
+    document.querySelector(
+      'input[name="selectedInventory"]:checked'
+    );
+
+
+  if (!selected) {
+
+    return showToast(
+      'Please select an inventory item first',
+      'error'
+    );
+
+  }
+
+
+  const item =
+    receptionInventoryRequests.find(
+      x => x.id === selected.value
+    );
+
+
+  if (!item) {
+
+    return showToast(
+      'Inventory item not found',
+      'error'
+    );
+
+  }
+
+
+  if (item.status !== 'approved') {
+
+    return showToast(
+      'Only approved inventory can be deleted',
+      'error'
+    );
+
+  }
+
+
+  document.getElementById(
+    'inventoryDeleteId'
+  ).value = item.id;
+
+
+  document.getElementById(
+    'inventoryDeleteReason'
+  ).value = '';
+
+
+  document.getElementById(
+    'inventoryDeleteModal'
+  ).classList.remove('hidden');
+}
+
+
+// ------------------------------------------------------------
+// CONFIRM DELETE
+// ------------------------------------------------------------
+
+async function confirmInventoryDeletion() {
+
+  const id =
+    document.getElementById(
+      'inventoryDeleteId'
+    ).value;
+
+  const reason =
+    document.getElementById(
+      'inventoryDeleteReason'
+    ).value.trim();
+
+
+  if (!reason) {
+
+    return showToast(
+      'Please enter a reason for deleting the item',
+      'error'
+    );
+
+  }
+
+
+  const item =
+    receptionInventoryRequests.find(
+      x => x.id === id
+    );
+
+
+  if (!item) {
+
+    return showToast(
+      'Inventory item not found',
+      'error'
+    );
+
+  }
+
+
+  try {
+
+    // Store deleted inventory separately.
+    await db
+      .collection('deletedInventory')
+      .add({
+
+        originalInventoryId: id,
+
+        itemName: item.itemName,
+
+        quantity: item.quantity,
+
+        unitPrice: item.unitPrice,
+
+        totalPrice: item.totalPrice,
+
+        purchasedFrom: item.purchasedFrom,
+
+        invoiceNo: item.invoiceNo,
+
+        deletionReason: reason,
+
+        deletedBy:
+          auth.currentUser
+            ? auth.currentUser.email
+            : 'receptionist',
+
+        deletedAt:
+          firebase.firestore.FieldValue.serverTimestamp()
+
+      });
+
+
+    // Remove it from active inventory.
+    await db
+      .collection('inventory')
+      .doc(id)
+      .delete();
+
+
+    // Mark original request as deleted.
+    await db
+      .collection('inventoryRequests')
+      .doc(id)
+      .update({
+
+        status: 'deleted',
+
+        deletionReason: reason,
+
+        deletedAt:
+          firebase.firestore.FieldValue.serverTimestamp()
+
+      });
+
+
+    closeModal('inventoryDeleteModal');
+
+    showToast(
+      'Inventory item deleted successfully',
+      'success'
+    );
+
+
+  } catch (error) {
+
+    console.error(error);
+
+    showToast(
+      'Failed to delete inventory: ' +
+      error.message,
+      'error'
+    );
+
+  }
+}
+
+
+// ------------------------------------------------------------
+// SAFE HTML
+// ------------------------------------------------------------
+
+function escapeInventoryHtml(value) {
+
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+
+}
+
+// ============================================================
+//  UTILITIES
+// ============================================================
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+function showToast(msg, type='info') {
+  const c = document.getElementById('toastContainer');
+  if(!c) return;
+  const d = document.createElement('div');
+  d.className = `toast`;
+  d.style.cssText = "background: #e60000; color: #fff; padding: 0.5rem 1rem; margin-bottom: 0.5rem; border-radius: 4px; font-size: 0.9rem;";
+  d.innerHTML = `<b>ℹ</b> ${msg}`;
+  c.appendChild(d);
+  setTimeout(() => d.remove(), 4000);
+}
+function formatTs(ts) {
+  if (!ts) return '—';
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  return d.toLocaleString('en-PK');
+}
+
+auth.onAuthStateChanged(user => {
+  initListeners();
+});
+
+window.generateOrderId = async function(prefix) {
+  const ts = Date.now().toString().slice(-6);
+  const rand = Math.floor(1000 + Math.random() * 9000);
+  return `${prefix}-${ts}-${rand}`;
+};
+</script>
+<div class="modal-overlay hidden" id="receptionExpenseModal">
+  <div class="modal-box modal-lg">
+    <div class="modal-header-sticky">
+      <button class="modal-close" onclick="closeModal('receptionExpenseModal')">✕</button>
+      <div class="modal-title" style="color: var(--red);">Add New Expense Request</div>
+    </div>
+    <div class="modal-body-scroll">
+      <div class="form-group">
+        <label>Category Header</label>
+        <input type="text" class="form-control" id="rc_exp_cat" placeholder="e.g., Kitchen Supplies, Utilities">
+      </div>
+      <div class="form-group">
+        <label>Line Description Details</label>
+        <textarea class="form-control" id="rc_exp_desc" rows="2" placeholder="Enter item specifics..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>Net Amount Outflow (Rs.)</label>
+        <input type="number" class="form-control" id="rc_exp_amt" min="1" placeholder="e.g. 1500">
+      </div>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div class="form-group">
+          <label>Quantity</label>
+          <input type="number" class="form-control" id="rc_exp_qty" min="1" value="1">
+        </div>
+        <div class="form-group">
+          <label>Unit</label>
+          <input type="text" class="form-control" id="rc_exp_unit" placeholder="e.g., kg, packets, pcs">
+        </div>
+      </div>
+      <button class="btn" style="width:100%; margin-top:1rem;" onclick="submitReceptionExpense()">Submit Expense for Approval</button>
+    </div>
+  </div>
+</div>
+<!-- =========================================================
+     INVENTORY ADD / EDIT MODAL
+========================================================= -->
+<div class="modal-overlay hidden" id="inventoryModal">
+
+  <div class="modal-box">
+
+    <div class="modal-header-sticky">
+
+      <button
+        class="modal-close"
+        onclick="closeModal('inventoryModal')">
+        ✕
+      </button>
+
+      <div
+        class="modal-title"
+        id="inventoryModalTitle"
+        style="color:var(--red);">
+        Add Inventory
+      </div>
+
+    </div>
+
+    <div class="modal-body-scroll">
+
+      <input type="hidden" id="inventoryEditId">
+
+      <div class="form-group">
+        <label>Inventory Item Name *</label>
+        <input
+          type="text"
+          class="form-control"
+          id="inv_name"
+          placeholder="e.g. Cooking Oil">
+      </div>
+
+      <div class="form-group">
+        <label>Quantity *</label>
+        <input
+          type="number"
+          class="form-control"
+          id="inv_quantity"
+          min="1"
+          step="1"
+          placeholder="e.g. 10"
+          oninput="calculateInventoryTotal()">
+      </div>
+
+      <div class="form-group">
+        <label>Unit Purchase Price (Rs.) *</label>
+        <input
+          type="number"
+          class="form-control"
+          id="inv_amount"
+          min="0"
+          step="0.01"
+          placeholder="e.g. 2500"
+          oninput="calculateInventoryTotal()">
+      </div>
+
+      <div class="form-group">
+        <label>Total Purchase Price (Rs.)</label>
+        <input
+          type="number"
+          class="form-control"
+          id="inv_total"
+          readonly>
+      </div>
+
+      <div class="form-group">
+        <label>Purchased From / Supplier *</label>
+        <input
+          type="text"
+          class="form-control"
+          id="inv_supplier"
+          placeholder="Supplier / Store Name">
+      </div>
+
+      <div class="form-group">
+        <label>Invoice No. *</label>
+        <input
+          type="text"
+          class="form-control"
+          id="inv_invoice"
+          placeholder="Invoice number">
+      </div>
+
+      <button
+        class="btn"
+        style="width:100%;margin-top:1rem;"
+        id="inventorySubmitBtn"
+        onclick="submitInventoryRequest()">
+        Submit For Admin Approval
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<!-- =========================================================
+     DELETE INVENTORY REASON MODAL
+========================================================= -->
+<div class="modal-overlay hidden" id="inventoryDeleteModal">
+
+  <div class="modal-box">
+
+    <div class="modal-header-sticky">
+
+      <button
+        class="modal-close"
+        onclick="closeModal('inventoryDeleteModal')">
+        ✕
+      </button>
+
+      <div
+        class="modal-title"
+        style="color:var(--red);">
+        Delete Inventory Item
+      </div>
+
+    </div>
+
+    <div class="modal-body-scroll">
+
+      <input type="hidden" id="inventoryDeleteId">
+
+      <div class="form-group">
+
+        <label>
+          Reason for Deleting *
+        </label>
+
+        <textarea
+          class="form-control"
+          id="inventoryDeleteReason"
+          rows="4"
+          placeholder="Enter the reason for deleting this inventory item..."></textarea>
+
+      </div>
+
+      <button
+        class="btn"
+        style="width:100%;"
+        onclick="confirmInventoryDeletion()">
+        Confirm Delete
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
+</body>
+</html>
